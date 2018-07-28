@@ -19,7 +19,7 @@ def callback_left(data):
 	left_eye_marker = Marker(type=Marker.SPHERE,id=0,lifetime=rospy.Duration(1.5),pose=Pose(Point(x_pos, y_pos, z_pos), Quaternion(w=1, x=0, y=0, z=0)),scale=Vector3(0.2, 0.2, 0.2),header=Header(frame_id='kinect2_rgb_optical_frame'),color=ColorRGBA(0.0, 1.0, 0.0, 0.8),text="whatsup")
 	left_eye_line = rospy.Publisher('left_eye_line', Marker, queue_size=5)
 	left_eye_line_marker = Marker()
-	left_eye_line_marker.header.frame_id = "kinect2_rgb_optical_frame"
+	left_eye_line_marker.header.frame_id = "world"
 	left_eye_line_marker.type = left_eye_line_marker.LINE_STRIP
 	left_eye_line_marker.action = left_eye_line_marker.ADD
 
@@ -62,7 +62,7 @@ def callback_left(data):
 
 	left_eye_line.publish(left_eye_line_marker)
 
-	left_eye_marker_publisher.publish(left_eye_marker)
+	# left_eye_marker_publisher.publish(left_eye_marker)
 
 	# left_eye_marker_publisher.publish(left_eye_marker)
 	# rate = rospy.Rate(5)
@@ -107,7 +107,7 @@ def callback_right(data):
 	right_eye_marker = Marker(type=Marker.SPHERE,id=0,lifetime=rospy.Duration(1.5),pose=Pose(Point(x_pos, y_pos, z_pos), Quaternion(w=1, x=0, y=0, z=0)),scale=Vector3(0.2, 0.2, 0.2),header=Header(frame_id='kinect2_rgb_optical_frame'),color=ColorRGBA(0.0, 1.0, 0.0, 0.8),text="whatsup")
 	right_eye_line = rospy.Publisher('right_eye_line', Marker, queue_size=5)
 	right_eye_line_marker = Marker()
-	right_eye_line_marker.header.frame_id = "kinect2_rgb_optical_frame"
+	right_eye_line_marker.header.frame_id = "world"
 	right_eye_line_marker.type = right_eye_line_marker.LINE_STRIP
 	right_eye_line_marker.action = right_eye_line_marker.ADD
 
@@ -149,7 +149,7 @@ def callback_right(data):
 
 	right_eye_line.publish(right_eye_line_marker)
 
-	right_eye_marker_publisher.publish(right_eye_marker)
+	# right_eye_marker_publisher.publish(right_eye_marker)
 	# print x_pos, y_pos, z_pos
 	# print("right eye position")
 	# print x_pos, y_pos, z_pos
