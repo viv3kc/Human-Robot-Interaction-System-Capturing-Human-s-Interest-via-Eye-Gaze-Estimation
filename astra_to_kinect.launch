@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="tf" type="static_transform_publisher" name="kinect2_link_broadcaster"
+          args="0.0 0.0 0.0 -0.5 0.5 -0.5 0.5 /world /camera_link 30" />
+</launch>
