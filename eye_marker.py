@@ -5,6 +5,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 import math
 import numpy as np
 import rospy
+from tf2_msgs.msg import TFMessage
 from std_msgs.msg import Header, ColorRGBA, Int8
 from darknet_ros_msgs.msg import BoundingBoxes
 from geometry_msgs.msg import PointStamped, Quaternion, Pose, Point, Vector3
@@ -57,7 +58,7 @@ def callback_left(data):
 	second_line_point = Point()
 	second_line_point.x = x_pos + 1.0
 	second_line_point.y = y_pos + 1.0
-	second_line_point.z = 0.0
+	second_line_point.z = z_pos
 	left_eye_line_marker.points.append(second_line_point)
 
 	left_eye_line.publish(left_eye_line_marker)
@@ -115,7 +116,6 @@ def callback_right(data):
 	right_eye_line_marker.scale.x = 0.03
 	right_eye_line_marker.scale.y = 0.03
 	right_eye_line_marker.scale.z = 0.03
-
 	# marker color
 	right_eye_line_marker.color.a = 1.0
 	right_eye_line_marker.color.r = 1.0
@@ -244,6 +244,9 @@ def yolo(data):
 
 	bound.publish(bound_array)
 
+def callback_tf(data):
+	print data.rotation
+
 if __name__ == '__main__':
 
 # ROS node initialization
@@ -255,6 +258,7 @@ if __name__ == '__main__':
 	rospy.Subscriber("/new/subject/righteye/position", PointStamped, callback_right, queue_size=1)
 
 	rospy.Subscriber("/darknet_ros/bounding_boxes", BoundingBoxes, yolo, queue_size=1)
+	rospy.Subscriber("/tf", TFMessage, callback_tf, queue_size=1)
 	# publishShape()
 # print marker_sub[0]
 # Create Publishers
