@@ -5,10 +5,34 @@ from visualization_msgs.msg import Marker, MarkerArray
 import math
 import numpy as np
 import rospy
+from cv_bridge import CvBridge, CvBridgeError
+import cv2
 from tf2_msgs.msg import TFMessage
+from sensor_msgs.msg import Image
 from std_msgs.msg import Header, ColorRGBA, Int8
 from darknet_ros_msgs.msg import BoundingBoxes
-from geometry_msgs.msg import PointStamped, Quaternion, Pose, Point, Vector3
+from geometry_msgs.msg import PointStamped, Quaternion, Pose, Point, Vector3, TransformStamped
+
+rotation_x = None
+rotation_y = None
+rotation_z = None
+rotation_w = None
+trans_x = None
+trans_y = None
+trans_z = None
+def callback_tf(data):
+	global rotation_x, rotation_y, rotation_z, rotation_w, trans_x, trans_y, trans_z
+	if data.transforms[0].child_frame_id == "/head_pose_estimated_new_future":
+
+		rotation_x = data.transforms[0].transform.rotation.x
+		rotation_y = data.transforms[0].transform.rotation.y
+		rotation_z = data.transforms[0].transform.rotation.z
+		rotation_w = data.transforms[0].transform.rotation.w
+
+	# if data.transforms[0].child_frame_id == "world_gazetwoeyes":
+	# 	trans_x = data.transforms[0].transform.translation.x
+	# 	trans_y = data.transforms[0].transform.translation.y
+	# 	trans_z = data.transforms[0].transform.translation.z
 
 def callback_left(data):
 	x_pos = (data.point.x ) / (180 * np.pi)
@@ -20,7 +44,7 @@ def callback_left(data):
 	left_eye_marker = Marker(type=Marker.SPHERE,id=0,lifetime=rospy.Duration(1.5),pose=Pose(Point(x_pos, y_pos, z_pos), Quaternion(w=1, x=0, y=0, z=0)),scale=Vector3(0.2, 0.2, 0.2),header=Header(frame_id='kinect2_rgb_optical_frame'),color=ColorRGBA(0.0, 1.0, 0.0, 0.8),text="whatsup")
 	left_eye_line = rospy.Publisher('left_eye_line', Marker, queue_size=5)
 	left_eye_line_marker = Marker()
-	left_eye_line_marker.header.frame_id = "world"
+	left_eye_line_marker.header.frame_id = "kinect2_link"
 	left_eye_line_marker.type = left_eye_line_marker.LINE_STRIP
 	left_eye_line_marker.action = left_eye_line_marker.ADD
 
@@ -31,17 +55,17 @@ def callback_left(data):
 
 	# marker color
 	left_eye_line_marker.color.a = 1.0
-	left_eye_line_marker.color.r = 1.0
+	left_eye_line_marker.color.r = 0.0
 	left_eye_line_marker.color.g = 1.0
-	left_eye_line_marker.color.b = 0.0
+	left_eye_line_marker.color.b = 1.0
 
 	# marker orientaiton
-	left_eye_line_marker.pose.orientation.x = 0.0
-	left_eye_line_marker.pose.orientation.y = 0.0
-	left_eye_line_marker.pose.orientation.z = 0.0
-	left_eye_line_marker.pose.orientation.w = 1.0
+	left_eye_line_marker.pose.orientation.x = rotation_x
+	left_eye_line_marker.pose.orientation.y = rotation_y
+	left_eye_line_marker.pose.orientation.z = rotation_z
+	left_eye_line_marker.pose.orientation.w = rotation_w
 
-	# marker position
+	# marker positionrotation_x
 	# left_eye_line_marker.pose.position.x = x_pos
 	# left_eye_line_marker.pose.position.y = y_pos
 	# left_eye_line_marker.pose.position.z = z_pos
@@ -51,14 +75,20 @@ def callback_left(data):
 	# first point
 	first_line_point = Point()
 	first_line_point.x = x_pos
-	first_line_point.y = y_pos
+	first_line_point.y = y_pos - 0.5
 	first_line_point.z = z_pos
+	# first_line_point.x = x_pos
+	# first_line_point.y = y_pos - 0.8
+	# first_line_point.z = z_pos
 	left_eye_line_marker.points.append(first_line_point)
 	# second point
 	second_line_point = Point()
-	second_line_point.x = x_pos + 1.0
-	second_line_point.y = y_pos + 1.0
+	second_line_point.x = x_pos - 1.1
+	second_line_point.y = y_pos
 	second_line_point.z = z_pos
+	# second_line_point.x = x_pos - 1
+	# second_line_point.y = y_pos - 1.1
+	# second_line_point.z = z_pos
 	left_eye_line_marker.points.append(second_line_point)
 
 	left_eye_line.publish(left_eye_line_marker)
@@ -86,7 +116,7 @@ def callback_left(data):
  # 		marker.action = marker.ADD
  # 		marker.pose.orientation.w = 1
 
- # 		marker.points = triplePoints;
+ # 		marker.points = triplePoints;r_objects/status
  # 		t = rospy.Duration()
  # 		marker.lifetime = t
  # 		marker.scale.x = 0.4
@@ -108,7 +138,7 @@ def callback_right(data):
 	right_eye_marker = Marker(type=Marker.SPHERE,id=0,lifetime=rospy.Duration(1.5),pose=Pose(Point(x_pos, y_pos, z_pos), Quaternion(w=1, x=0, y=0, z=0)),scale=Vector3(0.2, 0.2, 0.2),header=Header(frame_id='kinect2_rgb_optical_frame'),color=ColorRGBA(0.0, 1.0, 0.0, 0.8),text="whatsup")
 	right_eye_line = rospy.Publisher('right_eye_line', Marker, queue_size=5)
 	right_eye_line_marker = Marker()
-	right_eye_line_marker.header.frame_id = "world"
+	right_eye_line_marker.header.frame_id = "kinect2_link"
 	right_eye_line_marker.type = right_eye_line_marker.LINE_STRIP
 	right_eye_line_marker.action = right_eye_line_marker.ADD
 
@@ -118,15 +148,15 @@ def callback_right(data):
 	right_eye_line_marker.scale.z = 0.03
 	# marker color
 	right_eye_line_marker.color.a = 1.0
-	right_eye_line_marker.color.r = 1.0
+	right_eye_line_marker.color.r = 0.0
 	right_eye_line_marker.color.g = 1.0
 	right_eye_line_marker.color.b = 0.0
 
-	# marker orientaiton
-	right_eye_line_marker.pose.orientation.x = 0.0
-	right_eye_line_marker.pose.orientation.y = 0.0
-	right_eye_line_marker.pose.orientation.z = 0.0
-	right_eye_line_marker.pose.orientation.w = 1.0
+	# marker orientaitonworld
+	right_eye_line_marker.pose.orientation.x = rotation_x
+	right_eye_line_marker.pose.orientation.y = rotation_y
+	right_eye_line_marker.pose.orientation.z = rotation_z
+	right_eye_line_marker.pose.orientation.w = rotation_w
 
 	# marker position
 	# right_eye_line_marker.pose.position.x = x_pos
@@ -137,14 +167,14 @@ def callback_right(data):
 	# first point
 	first_line_point = Point()
 	first_line_point.x = x_pos
-	first_line_point.y = y_pos
+	first_line_point.y = y_pos - 0.7
 	first_line_point.z = z_pos
 	right_eye_line_marker.points.append(first_line_point)
 	# second point
 	second_line_point = Point()
-	second_line_point.x = x_pos + 1.0
-	second_line_point.y = y_pos + 1.0
-	second_line_point.z = 0.0
+	second_line_point.x = x_pos - 1.1
+	second_line_point.y = y_pos - 0.1
+	second_line_point.z = z_pos
 	right_eye_line_marker.points.append(second_line_point)
 
 	right_eye_line.publish(right_eye_line_marker)
@@ -188,7 +218,7 @@ def yolo(data):
 		bounding_line_marker.action = bounding_line_marker.ADD
 		# my_data.append([xmin, xmax, ymin, ymax])
 		# print ymin
-		# marker scale
+		# marker scaleworld
 		bounding_line_marker.scale.x = 0.03
 		bounding_line_marker.scale.y = 0.03
 		bounding_line_marker.scale.z = 0.03
@@ -244,31 +274,28 @@ def yolo(data):
 
 	bound.publish(bound_array)
 
-def callback_tf(data):
-	print data.rotation
-
 if __name__ == '__main__':
-
-# ROS node initialization
+	# ROS node initialization
 	rospy.init_node('listener', anonymous=True)
 	# rospy.sleep(0.5)
 	# show_text_in_rviz(marker_publisher, 'Hello world!')
-# Create Subscribers
+	# Create Subscribers
+	# rospy.Subscriber("/twoeyes/subject/lefteye/gazeimage", Image, callback_image, queue_size=1)
+	rospy.Subscriber("/tf", TFMessage, callback_tf, queue_size=1)
 	rospy.Subscriber("/new/subject/lefteye/position", PointStamped, callback_left, queue_size=1)
 	rospy.Subscriber("/new/subject/righteye/position", PointStamped, callback_right, queue_size=1)
 
 	rospy.Subscriber("/darknet_ros/bounding_boxes", BoundingBoxes, yolo, queue_size=1)
-	rospy.Subscriber("/tf", TFMessage, callback_tf, queue_size=1)
 	# publishShape()
-# print marker_sub[0]
-# Create Publishers
-# pcl_objects_pub = rospy.Publisher("/pcl_objects", pc2.PointCloud2, queue_size=1)
-# pcl_table_pub = rospy.Publisher("/pcl_table", pc2.PointCloud2, queue_size=1)
-# pcl_cluster_pub = rospy.Publisher("/pcl_cluster", pc2.PointCloud2, queue_size=1)
+	# print marker_sub[0]
+	# Create Publishers
+	# pcl_objects_pub = rospy.Publisher("/pcl_objects", pc2.PointCloud2, queue_size=1)
+	# pcl_table_pub = rospy.Publisher("/pcl_table", pc2.PointCloud2, queue_size=1)
+	# pcl_cluster_pub = rospy.Publisher("/pcl_cluster", pc2.PointCloud2, queue_size=1)
 
-# Initialize color_list
-# get_color_list.color_list = []
+	# Initialize color_list
+	# get_color_list.color_list = []
 
-# Spin while node is not shutdown
+	# Spin while node is not shutdown
 	while not rospy.is_shutdown():
 		rospy.spin()
