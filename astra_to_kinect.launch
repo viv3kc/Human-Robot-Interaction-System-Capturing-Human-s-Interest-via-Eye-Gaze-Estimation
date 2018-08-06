@@ -1,3 +1,4 @@
 <launch>
-  <node pkg="tf" type="static_transform_publisher" name="astra_to_kinect" args="0 0 0 -1.9 0 5.2 /kinect2_link /camera_01_link 10"/>
+  <node pkg="tf" type="static_transform_publisher" name="astra_to_kinect" args="0 0 0 1.9 0 5.2 /kinect2_link /camera_01_link 10"/>
+  <node pkg="tf" type="static_transform_publisher" name="astra_to_astra" args="0 -0.1 1.4 0 3 0 /camera_01_link /camera_02_link 10"/>
 </launch>

@@ -20,9 +20,10 @@ rotation_w = None
 trans_x = None
 trans_y = None
 trans_z = None
+
 def callback_tf(data):
 	global rotation_x, rotation_y, rotation_z, rotation_w, trans_x, trans_y, trans_z
-	if data.transforms[0].child_frame_id == "/head_pose_estimated_new_future":
+	if data.transforms[0].child_frame_id == "world_gazetwoeyes":
 
 		rotation_x = data.transforms[0].transform.rotation.x
 		rotation_y = data.transforms[0].transform.rotation.y
@@ -75,8 +76,10 @@ def callback_left(data):
 	# first point
 	first_line_point = Point()
 	first_line_point.x = x_pos
-	first_line_point.y = y_pos - 0.5
+	first_line_point.y = y_pos - 0.4
 	first_line_point.z = z_pos
+	# second point
+
 	# first_line_point.x = x_pos
 	# first_line_point.y = y_pos - 0.8
 	# first_line_point.z = z_pos
@@ -84,7 +87,7 @@ def callback_left(data):
 	# second point
 	second_line_point = Point()
 	second_line_point.x = x_pos - 1.1
-	second_line_point.y = y_pos
+	second_line_point.y = y_pos - 0.5
 	second_line_point.z = z_pos
 	# second_line_point.x = x_pos - 1
 	# second_line_point.y = y_pos - 1.1
@@ -173,7 +176,7 @@ def callback_right(data):
 	# second point
 	second_line_point = Point()
 	second_line_point.x = x_pos - 1.1
-	second_line_point.y = y_pos - 0.1
+	second_line_point.y = y_pos - 0.6
 	second_line_point.z = z_pos
 	right_eye_line_marker.points.append(second_line_point)
 
@@ -212,7 +215,7 @@ def yolo(data):
 		ymax = data.bounding_boxes[x].ymax / (180 * np.pi)
 
 		bounding_line_marker = Marker()
-		bounding_line_marker.header.frame_id = "camera_link"
+		bounding_line_marker.header.frame_id = "kinect2_link"
 		bounding_line_marker.id = x
 		bounding_line_marker.type = bounding_line_marker.LINE_STRIP
 		bounding_line_marker.action = bounding_line_marker.ADD
