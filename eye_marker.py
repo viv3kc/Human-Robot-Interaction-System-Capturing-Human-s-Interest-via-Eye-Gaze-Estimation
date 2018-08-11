@@ -2,8 +2,9 @@
 
 import roslib; roslib.load_manifest('visualization_marker_tutorials')
 from visualization_msgs.msg import Marker, MarkerArray
-import math
-import numpy as np
+import math, time, matplotlib.pyplot as plt
+from scipy.stats import norm
+import numpy as np, seaborn as sns
 import rospy
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
@@ -20,7 +21,16 @@ rotation_w = None
 trans_x = None
 trans_y = None
 trans_z = None
-
+tvmonitor_datapoints = np.array([])
+laptop_datapoints = np.array([])
+cup_datapoints = np.array([])
+cellphone_datapoints = np.array([])
+tv_monitor_variance = 0
+laptop_variance = 0
+cup_variance = 0
+cellphone_variance = 0
+timeout = time.time() + 60*1 #2 min time
+tvmonitor_mean = None
 def callback_tf(data):
 	global rotation_x, rotation_y, rotation_z, rotation_w, trans_x, trans_y, trans_z
 	if data.transforms[0].child_frame_id == "world_gazetwoeyes":
@@ -190,8 +200,8 @@ def callback_right(data):
 	# def show_text_in_rviz(marker_publisher, text):
 
 def yolo(data):
-	# print data.bounding_boxes
-	# print ''
+
+	global tvmonitor_datapoints, tvmonitor_mean, laptop_datapoints, cup_datapoints, cellphone_datapoints, laptop_variance, cup_variance, cellphone_variance, timeout, tv_monitor_variance
 	bound = rospy.Publisher('bound', MarkerArray, queue_size=1)
 	# bound_array.header.frame_id = "camera_link"
 	# bound_array.type = bound_array.LINE_STRIP
@@ -209,10 +219,38 @@ def yolo(data):
 
 	for x in range(len(data.bounding_boxes)):
 		# print data.bounding_boxes[x]
+
 		xmin = data.bounding_boxes[x].xmin / (180 * np.pi)
 		xmax = data.bounding_boxes[x].xmax / (180 * np.pi)
 		ymin = data.bounding_boxes[x].ymin / (180 * np.pi)
 		ymax = data.bounding_boxes[x].ymax / (180 * np.pi)
+
+		# tvmonitor_boundingbox = []
+
+		if time.time() < timeout:
+			if data.bounding_boxes[x].Class == "tvmonitor":
+				tvmonitor_datapoints = np.append(tvmonitor_datapoints, [xmin, xmax, ymin, ymax])
+
+
+
+			elif data.bounding_boxes[x].Class == "laptop":
+				laptop_datapoints = np.append(laptop_datapoints, [xmin, xmax, ymin, ymax])
+				laptop_variance = np.std(laptop_datapoints)
+			elif data.bounding_boxes[x].Class == "cell phone":
+				cellphone_datapoints = np.append(cellphone_datapoints, [xmin, xmax, ymin, ymax])
+				cellphone_variance = np.std(cellphone_datapoints)
+			elif data.bounding_boxes[x].Class == "cup":
+				cup_datapoints = np.append(cup_datapoints, [xmin, xmax, ymin, ymax])
+				cup_variance = np.std(cup_datapoints)
+			else:
+				pass
+		else:
+			tv_monitor_variance = np.std(tvmonitor_datapoints)
+			tvmonitor_mean = np.mean(tvmonitor_datapoints)
+			probabitydistri(tvmonitor_mean, tv_monitor_variance, rotation_y)
+
+
+				# print tv_monitor_variance
 
 		bounding_line_marker = Marker()
 		bounding_line_marker.header.frame_id = "kinect2_link"
@@ -276,6 +314,14 @@ def yolo(data):
 		# bounding_line.publish(bounding_line_marker)
 
 	bound.publish(bound_array)
+
+def probabitydistri(sigma, mu, x):
+	u = (x - mu) / abs(sigma)
+	y = (1 / (math.sqrt(2 * math.pi) * abs(sigma))) * math.exp(-u * u / 2)
+	y = norm(y)
+	sns.distplot(tvmonitor_datapoints, bins=20, kde=False, norm_hist=True)
+	plt.plot(rotation_y, y, label='single')
+	plt.legend()
 
 if __name__ == '__main__':
 	# ROS node initialization
