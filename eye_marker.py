@@ -19,6 +19,10 @@ rotation_x = None
 rotation_y = None
 rotation_z = None
 rotation_w = None
+h_rotation_x = None
+h_rotation_y = None
+h_rotation_z = None
+h_rotation_w = None
 trans_x = None
 trans_y = None
 trans_z = None
@@ -26,6 +30,7 @@ eq_tv = None
 x_pos= None
 y_pos= None
 z_pos= None
+
 tvmonitor_datapoints = np.array([])
 laptop_datapoints = np.array([])
 cup_datapoints = np.array([])
@@ -33,11 +38,12 @@ cellphone_datapoints = np.array([])
 tv_monitor_variance = 0
 laptop_variance = 0
 cup_variance = 0
+data_bounding = None
 cellphone_variance = 0
-timeout = time.time() + 60*.5 #2 min time
+timeout = time.time() + 60*6 #2 min time
 tvmonitor_mean = None
 def callback_tf(data):
-	global rotation_x, rotation_y, rotation_z, rotation_w, trans_x, trans_y, trans_z
+	global rotation_x, rotation_y, rotation_z, rotation_w, h_rotation_x, h_rotation_y,h_rotation_z, h_rotation_w
 	if data.transforms[0].child_frame_id == "world_gazetwoeyes":
 
 		rotation_x = data.transforms[0].transform.rotation.x
@@ -45,9 +51,20 @@ def callback_tf(data):
 		rotation_z = data.transforms[0].transform.rotation.z
 		rotation_w = data.transforms[0].transform.rotation.w
 
+	if data.transforms[0].child_frame_id == "/head_pose_estimated_new":
+
+		h_rotation_x = data.transforms[0].transform.rotation.x
+		h_rotation_y = data.transforms[0].transform.rotation.y
+		h_rotation_z = data.transforms[0].transform.rotation.z
+		h_rotation_w = data.transforms[0].transform.rotation.w
+
+def callback_nose(data):
+	global x_pos, y_pos, z_pos
+	x_pos = data.point.x / (180 * np.pi)
+	y_pos = data.point.y / (180 * np.pi)
+	z_pos = data.point.z / (180 * np.pi)
 
 def callback_left(data):
-	global x_pos, y_pos, z_pos
 	x_pos = (data.point.x ) / (180 * np.pi)
 	y_pos = (data.point.y ) / (180 * np.pi)
 	z_pos = (data.point.z ) / (180 * np.pi)
@@ -170,7 +187,7 @@ def callback_right(data):
 
 def yolo(data):
 
-	global tvmonitor_datapoints, tvmonitor_mean, laptop_datapoints, cup_datapoints, cellphone_datapoints, laptop_variance, cup_variance, cellphone_variance, timeout, tv_monitor_variance
+	global data_bounding, tvmonitor_datapoints, tvmonitor_mean, laptop_datapoints, cup_datapoints, cellphone_datapoints, laptop_variance, cup_variance, cellphone_variance, timeout, tv_monitor_variance
 	bound = rospy.Publisher('bound', MarkerArray, queue_size=1)
 	# bound_array.header.frame_id = "camera_link"
 	# bound_array.type = bound_array.LINE_STRIP
@@ -188,37 +205,48 @@ def yolo(data):
 
 	for x in range(len(data.bounding_boxes)):
 		# print data.bounding_boxes[x]
-
+		data_bounding = data.bounding_boxes[x].Class
+		# print data_bounding
 		xmin = data.bounding_boxes[x].xmin / (180 * np.pi)
 		xmax = data.bounding_boxes[x].xmax / (180 * np.pi)
 		ymin = data.bounding_boxes[x].ymin / (180 * np.pi)
 		ymax = data.bounding_boxes[x].ymax / (180 * np.pi)
-
+		# print data.bounding_boxes
 		# tvmonitor_boundingbox = []
 		# print xmin
+		# poinssss = np.append(poinssss, [xmin, xmax, ymin, ymax])
+		# print np.linspace(-6, 8, 200)
+		poi = pointofinter(xmin, xmax, ymin, ymax)
+		# print -poi[1], poi[0]
+		# print ymin, poi[1], ymax
+		if (xmin) < poi[0] < (xmax) and (ymin) < -poi[1] < (ymax):
+			print data.bounding_boxes[x].Class
+		else:
+			pass
 		if time.time() < timeout:
 			if data.bounding_boxes[x].Class == "tvmonitor":
 				tvmonitor_datapoints = np.append(tvmonitor_datapoints, [xmin, xmax, ymin, ymax])
-			# p1 = np.array([1, -xmin, ymin])
-			# p2 = np.array([1, -xmax, ymin])
-			# p3 = np.array([1, -xmax, ymax])
-
-			# print('the equation is {0}x +{1}y + {2}z = {3}'.format(a,b,c,d))
-		#
-		#
-		# 	elif data.bounding_boxes[x].Class == "laptop":
-		# 		laptop_datapoints = np.append(laptop_datapoints, [xmin, xmax, ymin, ymax])
-		# 		laptop_variance = np.std(laptop_datapoints)
-		# 	elif data.bounding_boxes[x].Class == "cell phone":
-		# 		cellphone_datapoints = np.append(cellphone_datapoints, [xmin, xmax, ymin, ymax])
-		# 		cellphone_variance = np.std(cellphone_datapoints)
-		# 	elif data.bounding_boxes[x].Class == "cup":
-		# 		cup_datapoints = np.append(cup_datapoints, [xmin, xmax, ymin, ymax])
-		# 		cup_variance = np.std(cup_datapoints)
-		# 	else:
-		# 		pass
+				tv_monitor_variance = np.std(tvmonitor_datapoints)
+				tvmonitor_mean = np.mean(tvmonitor_datapoints)
+				probabitydistri(tv_monitor_variance, tvmonitor_mean, poi[0])
+			elif data.bounding_boxes[x].Class == "laptop":
+				laptop_datapoints = np.append(laptop_datapoints, [xmin, xmax, ymin, ymax])
+				# print xmin, xmax, ymin ,ymax
+				# pointofinter(laptop_datapoints)
+				# print "laptop"
+				# laptop_variance = np.std(laptop_datapoints)
+			elif data.bounding_boxes[x].Class == "cell phone":
+				cellphone_datapoints = np.append(cellphone_datapoints, [xmin, xmax, ymin, ymax])
+				# pointofinter(cellphone_datapoints)
+				# print "cell phone"
+				# cellphone_variance = np.std(cellphone_datapoints)
+			elif data.bounding_boxes[x].Class == "cup":
+				cup_datapoints = np.append(cup_datapoints, [xmin, xmax, ymin, ymax])
+				# cup_variance = np.std(cup_datapoints)
+			else:
+				pass
 		else:
-			pointofinter(tvmonitor_datapoints)
+			pass
 		# 	tv_monitor_variance = np.std(tvmonitor_datapoints)
 		# 	tvmonitor_mean = np.mean(tvmonitor_datapoints)
 		# 	probabitydistri(tvmonitor_mean, tv_monitor_variance, rotation_y)
@@ -297,11 +325,17 @@ def probabitydistri(sigma, mu, x):
 	plt.plot(rotation_y, y, label='single')
 	plt.legend()
 
-def pointofinter(tvmonitor_datapoints):
+def pointofinter(xmin, xmax, ymin, ymax):
+	# if data
+	p1 = np.array([1/2, xmin/2, ymin/2])
+	p2 = np.array([1, xmax, ymax])
+	p3 = np.array([1, xmax, ymin])
 
-	p1 = np.array(tvmonitor_datapoints[np.random.choice(tvmonitor_datapoints.shape[0], 3, replace=False)])
-	p2 = np.array(tvmonitor_datapoints[np.random.choice(tvmonitor_datapoints.shape[0], 3, replace=False)])
-	p3 = np.array(tvmonitor_datapoints[np.random.choice(tvmonitor_datapoints.shape[0], 3, replace=False)])
+	# p1 = np.append(p1, tvmonitor_datapoints[np.random.choice(tvmonitor_datapoints.shape[0], 2, replace=False)])
+	# p2 = np.append(p2, tvmonitor_datapoints[np.random.choice(tvmonitor_datapoints.shape[0], 2, replace=False)])
+	# p3 = np.append(p3, tvmonitor_datapoints[np.random.choice(tvmonitor_datapoints.shape[0], 2, replace=False)])
+
+
 	#
 	v1 = p3 - p1
 	v2 = p2 - p1
@@ -309,19 +343,21 @@ def pointofinter(tvmonitor_datapoints):
 	cp = np.cross(v1, v2)
 	# # print cp
 	a,b,c = cp
+	# print a,b,c
 	d = np.dot(cp, p3)
 	# print a ,b ,c, d
-	t = d - (a * x_pos) + (b * y_pos) + (c * z_pos) / (a * rotation_x) + (b * rotation_y) + (c * rotation_z)
-	# # print (a * rotation_x) + (b * rotation_y) + (c * rotation_z)
-	poi_x = (a * x_pos) + (a * t * rotation_x)
-	poi_y = (b * y_pos) + (b * t * rotation_y)
-	poi_z = (c * z_pos) + (c * t * rotation_z)
+	# print a,b,c,d
+	t = d - (a * x_pos ) + (b * y_pos ) + (c * z_pos ) / ((a * h_rotation_x) + (b * h_rotation_y) + (c * h_rotation_z))
+	# print (a * rotation_x) + (b * rotation_y) + (c * rotation_z)
+	poi_x = (a * x_pos * 6) + (a * t * h_rotation_x)
+	poi_y = (b * y_pos * 6) + (b * t * h_rotation_y)
+	poi_z = (c * z_pos * 6) + (c * t * h_rotation_z)
 	poi = np.array([poi_x, poi_y, poi_z])
-
-
+	# print poi
 	poi_marker_publisher = rospy.Publisher('poi_marker', Marker, queue_size=5)
-	poi_marker = Marker(type=Marker.SPHERE,id=0,lifetime=rospy.Duration(1.5),pose=Pose(Point(x_pos, y_pos, z_pos), Quaternion(w=1, x=0, y=0, z=0)),scale=Vector3(0.2, 0.2, 0.2),header=Header(frame_id='kinect2_link'),color=ColorRGBA(0.0, 1.0, 0.0, 0.8),text="whatsup")
+	poi_marker = Marker(type=Marker.SPHERE,id=0,lifetime=rospy.Duration(1.5),pose=Pose(Point(poi_x, poi_y, poi_z), Quaternion(w=1, x=0, y=0, z=0)),scale=Vector3(0.2, 0.2, 0.2),header=Header(frame_id='kinect2_link'),color=ColorRGBA(0.0, 1.0, 0.0, 0.8),text="whatsup")
 	poi_marker_publisher.publish(poi_marker)
+	return poi
 
 if __name__ == '__main__':
 	# ROS node initialization
@@ -333,7 +369,7 @@ if __name__ == '__main__':
 	rospy.Subscriber("/tf", TFMessage, callback_tf, queue_size=1)
 	rospy.Subscriber("/new/subject/lefteye/position", PointStamped, callback_left, queue_size=1)
 	rospy.Subscriber("/new/subject/righteye/position", PointStamped, callback_right, queue_size=1)
-
+	rospy.Subscriber("/new/subject/nose/position", PointStamped, callback_nose, queue_size=1)
 	rospy.Subscriber("/darknet_ros/bounding_boxes", BoundingBoxes, yolo, queue_size=1)
 	# publishShape()
 	# print marker_sub[0]
