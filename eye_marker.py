@@ -3,9 +3,10 @@
 import roslib; roslib.load_manifest('visualization_marker_tutorials')
 from visualization_msgs.msg import Marker, MarkerArray
 import math, time, matplotlib.pyplot as plt
-from scipy.stats import norm
+import seaborn as sns
+from scipy import stats
 import numpy as np, seaborn as sns
-import rospy
+import rospy, csv
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
 from tf.transformations import euler_from_quaternion
@@ -30,17 +31,17 @@ eq_tv = None
 x_pos= None
 y_pos= None
 z_pos= None
-
-tvmonitor_datapoints = np.array([])
-laptop_datapoints = np.array([])
-cup_datapoints = np.array([])
-cellphone_datapoints = np.array([])
+count = 0
+tvmonitor_datapoints = np.empty((0,4))
+laptop_datapoints = np.empty((0,4))
+cup_datapoints = np.empty((0,4))
+cellphone_datapoints = np.empty((0,4))
 tv_monitor_variance = 0
 laptop_variance = 0
 cup_variance = 0
 data_bounding = None
 cellphone_variance = 0
-timeout = time.time() + 60*6 #2 min time
+timeout = time.time() + 60*5 #2 min time
 tvmonitor_mean = None
 def callback_tf(data):
 	global rotation_x, rotation_y, rotation_z, rotation_w, h_rotation_x, h_rotation_y,h_rotation_z, h_rotation_w
@@ -187,7 +188,7 @@ def callback_right(data):
 
 def yolo(data):
 
-	global data_bounding, tvmonitor_datapoints, tvmonitor_mean, laptop_datapoints, cup_datapoints, cellphone_datapoints, laptop_variance, cup_variance, cellphone_variance, timeout, tv_monitor_variance
+	global count, data_bounding, tvmonitor_datapoints, tvmonitor_mean, laptop_datapoints, cup_datapoints, cellphone_datapoints, laptop_variance, cup_variance, cellphone_variance, timeout, tv_monitor_variance
 	bound = rospy.Publisher('bound', MarkerArray, queue_size=1)
 	# bound_array.header.frame_id = "camera_link"
 	# bound_array.type = bound_array.LINE_STRIP
@@ -216,35 +217,54 @@ def yolo(data):
 		# print xmin
 		# poinssss = np.append(poinssss, [xmin, xmax, ymin, ymax])
 		# print np.linspace(-6, 8, 200)
-		poi = pointofinter(xmin, xmax, ymin, ymax)
+		# poi = pointofinter(xmin, xmax, ymin, ymax)
 		# print -poi[1], poi[0]
 		# print ymin, poi[1], ymax
-		if (xmin) < poi[0] < (xmax) and (ymin) < -poi[1] < (ymax):
-			print data.bounding_boxes[x].Class
-		else:
-			pass
-		if time.time() < timeout:
-			if data.bounding_boxes[x].Class == "tvmonitor":
-				tvmonitor_datapoints = np.append(tvmonitor_datapoints, [xmin, xmax, ymin, ymax])
-				tv_monitor_variance = np.std(tvmonitor_datapoints)
-				tvmonitor_mean = np.mean(tvmonitor_datapoints)
-				probabitydistri(tv_monitor_variance, tvmonitor_mean, poi[0])
-			elif data.bounding_boxes[x].Class == "laptop":
-				laptop_datapoints = np.append(laptop_datapoints, [xmin, xmax, ymin, ymax])
-				# print xmin, xmax, ymin ,ymax
-				# pointofinter(laptop_datapoints)
-				# print "laptop"
-				# laptop_variance = np.std(laptop_datapoints)
-			elif data.bounding_boxes[x].Class == "cell phone":
-				cellphone_datapoints = np.append(cellphone_datapoints, [xmin, xmax, ymin, ymax])
-				# pointofinter(cellphone_datapoints)
-				# print "cell phone"
-				# cellphone_variance = np.std(cellphone_datapoints)
-			elif data.bounding_boxes[x].Class == "cup":
-				cup_datapoints = np.append(cup_datapoints, [xmin, xmax, ymin, ymax])
-				# cup_variance = np.std(cup_datapoints)
+		# if (xmin) < poi[0] < (xmax) and (ymin) < -poi[1] < (ymax):
+		# 	# print data.bounding_boxes[x].Class
+		# 	pass
+		# else:
+		# 	pass
+		if count == 0:
+			if time.time() < timeout:
+				if data.bounding_boxes[x].Class == "tvmonitor":
+					tvmonitor_datapoints = np.vstack((tvmonitor_datapoints, np.array([xmin, xmax, ymin, ymax])))
+					print np.array([xmin, xmax, ymin, ymax])
+					# print tvmonitor_datapoints
+					# print tvmonitor_datapoints.size
+					# tv_monitor_variance = np.std(tvmonitor_datapoints)
+					# tvmonitor_mean = np.mean(tvmonitor_datapoints)
+					# probabitydistri(tv_monitor_variance, tvmonitor_mean, poi[0])
+				elif data.bounding_boxes[x].Class == "laptop":
+					laptop_datapoints = np.vstack((laptop_datapoints, np.array([xmin, xmax, ymin, ymax])))
+					# print xmin, xmax, ymin ,ymax
+					# pointofinter(laptop_datapoints)
+					# print "laptop"
+					# laptop_variance = np.std(laptop_datapoints)
+				elif data.bounding_boxes[x].Class == "cell phone":
+					cellphone_datapoints = np.vstack((cellphone_datapoints, np.array([xmin, xmax, ymin, ymax])))
+					# pointofinter(cellphone_datapoints)
+					# print "cell phone"
+					# cellphone_variance = np.std(cellphone_datapoints)
+				elif data.bounding_boxes[x].Class == "cup":
+					cup_datapoints = np.vstack((cup_datapoints, np.array([xmin, xmax, ymin, ymax])))
+					# cup_variance = np.std(cup_datapoints)
+				else:
+					pass
 			else:
-				pass
+				count +=1
+				my_data = np.concatenate((tvmonitor_datapoints, laptop_datapoints))
+				my_data1 = np.concatenate((cup_datapoints, cellphone_datapoints))
+				my_data = np.concatenate((my_data, my_data1))
+				print my_data
+				np.savetxt("foo.csv", my_data, delimiter=",")
+				with open("output.csv", "w") as f:
+					writer = csv.writer(f)
+					writer.writerow(my_data)
+					# writer.writerow(',')
+				print "DONE"
+				plt.hist(my_data, 80, normed=True)
+				plt.xlim(-10,20)
 		else:
 			pass
 		# 	tv_monitor_variance = np.std(tvmonitor_datapoints)
@@ -320,7 +340,7 @@ def yolo(data):
 def probabitydistri(sigma, mu, x):
 	u = (x - mu) / abs(sigma)
 	y = (1 / (math.sqrt(2 * math.pi) * abs(sigma))) * math.exp(-u * u / 2)
-	y = norm(y)
+	y = stats.norm(y)
 	sns.distplot(tvmonitor_datapoints, bins=20, kde=False, norm_hist=True)
 	plt.plot(rotation_y, y, label='single')
 	plt.legend()
